@@ -1,5 +1,12 @@
 pipeline {
     agent { label 'dev' }
+    
+    // Define environment variables for the pipeline
+    environment {
+        // 👇 Replace this with your actual destination email
+        EMAIL_TO = 'jangratube@gmail.com' 
+    }
+
     stages {
         stage('Git code clone') {
             steps {
@@ -8,6 +15,7 @@ pipeline {
         }
         stage('Docker Build') {
             steps {
+                // Consider adding the .dockerignore step here if you still face mysql-data permission issues
                 sh "docker build -t two-tier-flask-app ."
             }
         }
@@ -18,12 +26,12 @@ pipeline {
         }
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(        // ✅ Fix 1: withCredentials (plural)
-                    credentialsId: "dockerHub",           // ✅ Fix 2: credentialsId (lowercase 'd')
+                withCredentials([usernamePassword(
+                    credentialsId: "dockerHub",
                     passwordVariable: "dockerHubPass",
                     usernameVariable: "dockerHubUser"
                 )]) {
-                    sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"  // ✅ Fix 3: added -u flag
+                    sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
                     sh "docker image tag two-tier-flask-app ${env.dockerHubUser}/two-tier-flask-app"
                     sh "docker push ${env.dockerHubUser}/two-tier-flask-app:latest"
                 }
@@ -38,7 +46,7 @@ pipeline {
     post {
         success {
             emailext (
-                subject: "build successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                subject: "Build Successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: "Congratulations! The Jenkins build for ${env.JOB_NAME} #${env.BUILD_NUMBER} was successful.\n\nYou can view the build details here: ${env.BUILD_URL}",
                 to: "${env.EMAIL_TO}"
             )
@@ -51,4 +59,4 @@ pipeline {
             )
         }
     }
-} // ✅ ADDED: Missing closing brace for the main 'pipeline' block
+}
