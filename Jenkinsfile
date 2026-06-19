@@ -16,21 +16,23 @@ pipeline {
         // 🛡️ SECURITY STAGE 1: Software Composition Analysis
         stage('OWASP Dependency-Check') {
             steps {
-                // Updated to match your tool name: 'OWASP'
                 dependencyCheck additionalArguments: '--scan ./ --format HTML --format XML', odcInstallation: 'OWASP'
             }
         }
 
         // 🛡️ SECURITY STAGE 2: Static Application Security Testing
         stage('SonarQube Analysis') {
-            // Added tools block to pull the scanner matching your tool name: 'Sonar'
-            tools {
-                sqScanner 'Sonar'
-            }
             steps {
-                // Note: 'SonarQube-Server' here refers to the server connection name in 'Manage Jenkins > System', not the scanner tool.
-                withSonarQubeEnv('SonarQube-Server') {
-                    sh "sonar-scanner -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} -Dsonar.sources=."
+                script {
+                    // Fetch the installation path of the tool named 'Sonar'
+                    def scannerHome = tool 'Sonar'
+                    
+                    // Add the tool's /bin directory to the PATH
+                    withEnv(["PATH+SONAR=${scannerHome}/bin"]) {
+                        withSonarQubeEnv('SonarQube-Server') {
+                            sh "sonar-scanner -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} -Dsonar.sources=."
+                        }
+                    }
                 }
             }
         }
