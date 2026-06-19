@@ -35,4 +35,20 @@ pipeline {
             }
         }
     }
+post {
+    success {
+        emailext (
+            subject: "build successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: "Congratulations! The Jenkins build for ${env.JOB_NAME} #${env.BUILD_NUMBER} was successful.\n\nYou can view the build details here: ${env.BUILD_URL}",
+            to: "${env.EMAIL_TO}"
+        )
+    }
+    failure {
+        emailext (
+            subject: "Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: "Unfortunately, the Jenkins build for ${env.JOB_NAME} #${env.BUILD_NUMBER} has failed.\n\nPlease investigate the issue here: ${env.BUILD_URL}",
+            to: "${env.EMAIL_TO}"
+        )
+    }
+
 }
