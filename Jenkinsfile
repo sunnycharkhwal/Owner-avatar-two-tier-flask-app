@@ -1,10 +1,9 @@
 pipeline {
     agent { label 'dev' }
     
-    // Define environment variables for the pipeline
     environment {
-        // 👇 Replace this with your actual destination email
-        EMAIL_TO = 'jangratube@gmail.com'
+        EMAIL_TO = 'jangratube@gmail.com' 
+        SONAR_PROJECT_KEY = 'two-tier-flask-app'
     }
 
     stages {
@@ -13,18 +12,59 @@ pipeline {
                 git url: "https://github.com/sunnycharkhwal/Owner-avatar-two-tier-flask-app.git", branch: "master"
             }
         }
-        stage('Docker Build') {
+
+        // 🛡️ SECURITY STAGE 1: Software Composition Analysis
+        stage('OWASP Dependency-Check') {
             steps {
-                // Consider adding the .dockerignore step here if you still face mysql-data permission issues
-                sh "docker build -t two-tier-flask-app ."
+                // Updated to match your tool name: 'OWASP'
+                dependencyCheck additionalArguments: '--scan ./ --format HTML --format XML', odcInstallation: 'OWASP'
             }
         }
+
+        // 🛡️ SECURITY STAGE 2: Static Application Security Testing
+        stage('SonarQube Analysis') {
+            // Added tools block to pull the scanner matching your tool name: 'Sonar'
+            tools {
+                sqScanner 'Sonar'
+            }
+            steps {
+                // Note: 'SonarQube-Server' here refers to the server connection name in 'Manage Jenkins > System', not the scanner tool.
+                withSonarQubeEnv('SonarQube-Server') {
+                    sh "sonar-scanner -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} -Dsonar.sources=."
+                }
+            }
+        }
+
+        // 🛡️ SECURITY STAGE 3: Quality Gate
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Test') {
             steps {
                 echo 'Running unit test validation framework...'
             }
         }
-        stage('Push to Docker Hub') {
+
+        stage('Docker Build') {
+            steps {
+                sh "docker build -t two-tier-flask-app ."
+            }
+        }
+
+        // 🛡️ SECURITY STAGE 4: Local Image Vulnerability Scan
+        stage('Trivy Image Scan') {
+            steps {
+                sh "trivy image --severity HIGH,CRITICAL --exit-code 0 two-tier-flask-app"
+            }
+        }
+
+        // 🛡️ SECURITY STAGE 5: Advanced Container Security & Push
+        stage('Docker Scout & Push to Hub') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "dockerHub",
@@ -32,18 +72,26 @@ pipeline {
                     usernameVariable: "dockerHubUser"
                 )]) {
                     sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
-                    sh "docker image tag two-tier-flask-app ${env.dockerHubUser}/two-tier-flask-app"
+                    sh "docker image tag two-tier-flask-app ${env.dockerHubUser}/two-tier-flask-app:latest"
+                    
                     sh "docker push ${env.dockerHubUser}/two-tier-flask-app:latest"
+
+                    sh "docker scout cves ${env.dockerHubUser}/two-tier-flask-app:latest"
                 }
             }
         }
+
         stage('Docker compose Deploy') {
             steps {
                 sh "docker compose up -d --build flask-app"
             }
         }
     }
+    
     post {
+        always {
+            dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+        }
         success {
             emailext (
                 subject: "Build Successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
