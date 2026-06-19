@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Git code clone') {
             steps {
-                git url: "https://github.co/sunnycharkhwal/Owner-avatar-two-tier-flask-app.git", branch: "master"
+                git url: "https://github.com/sunnycharkhwal/Owner-avatar-two-tier-flask-app.git", branch: "master"
             }
         }
         stage('Docker Build') {
