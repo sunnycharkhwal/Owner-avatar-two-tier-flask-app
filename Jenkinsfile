@@ -16,7 +16,10 @@ pipeline {
         // 🛡️ SECURITY STAGE 1: Software Composition Analysis
         stage('OWASP Dependency-Check') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --format HTML --format XML', odcInstallation: 'OWASP'
+                // Securely pulls your 'nvd-api-key' credential to bypass rate limits
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_KEY')]) {
+                    dependencyCheck additionalArguments: "--scan ./ --format HTML --format XML --nvdApiKey ${env.NVD_KEY}", odcInstallation: 'OWASP'
+                }
             }
         }
 
@@ -29,7 +32,8 @@ pipeline {
                     
                     // Add the tool's /bin directory to the PATH
                     withEnv(["PATH+SONAR=${scannerHome}/bin"]) {
-                        withSonarQubeEnv('SonarQube-Server') {
+                        // Matches your exact server name 'Sonar'
+                        withSonarQubeEnv('Sonar') {
                             sh "sonar-scanner -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} -Dsonar.sources=."
                         }
                     }
