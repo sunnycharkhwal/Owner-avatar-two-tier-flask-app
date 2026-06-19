@@ -98,7 +98,14 @@ pipeline {
     
     post {
         always {
-            dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+            script {
+                // 👇 FIX: Only try to publish the report if it actually exists
+                if (fileExists('dependency-check-report.xml')) {
+                    dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+                } else {
+                    echo "OWASP report not found (likely due to NVD server 503 error). Skipping publisher."
+                }
+            }
         }
         success {
             emailext (
