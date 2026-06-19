@@ -4,7 +4,7 @@ pipeline {
     // Define environment variables for the pipeline
     environment {
         // 👇 Replace this with your actual destination email
-        EMAIL_TO = 'jangratube@gmail.com' 
+        EMAIL_TO = 'jangratube@gmail.com,sunny.charkhwal@gmail.com'
     }
 
     stages {
