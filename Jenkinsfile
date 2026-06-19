@@ -13,12 +13,14 @@ pipeline {
             }
         }
 
-        // 🛡️ SECURITY STAGE 1: Software Composition Analysis
+      // 🛡️ SECURITY STAGE 1: Software Composition Analysis
         stage('OWASP Dependency-Check') {
             steps {
-                // Securely pulls your 'nvd-api-key' credential to bypass rate limits
-                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_KEY')]) {
-                    dependencyCheck additionalArguments: "--scan ./ --format HTML --format XML --nvdApiKey ${env.NVD_KEY}", odcInstallation: 'OWASP'
+                // Prevents a pipeline crash if the NVD server is down (Error 503)
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_KEY')]) {
+                        dependencyCheck additionalArguments: "--scan ./ --format HTML --format XML --nvdApiKey ${env.NVD_KEY}", odcInstallation: 'OWASP'
+                    }
                 }
             }
         }
